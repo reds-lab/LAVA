@@ -10,14 +10,17 @@ import lava
 ```
 Coming Soon.
 
+## Examples
+
+For better understanding of applying LAVA to data valuation, we have provided examples on [CIFAR-10](example-cifar10.ipynb) and [STL-10](example-stl10.ipynb).
+
+## Checkpoints
+
+The pretrained embedders are included in the folder ['checkpoint'](checkpoint).
+
 
 ## Optimal Transport Solver
  
 This repo relies on the [OTDD](https://github.com/microsoft/otdd) implementation to compute the class-wise Wasserstein distance. </br>
 We are immensely grateful to the authors of that project.
 
-## Examples
-
-For better understanding of applying LAVA to data valuation, we have provided examples on [CIFAR-10](example-cifar10.ipynb) and [STL-10](example-stl10.ipynb).
-
-The pretrained embedders are included in the folder ['checkpoint'](checkpoint).
