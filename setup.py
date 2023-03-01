@@ -1,0 +1,30 @@
+from setuptools import find_packages, setup
+
+setup(
+    name='lava',
+    version='2.6.22',
+    description='LAVA-model-agnostic-data-valuation',
+    author='anonymous',
+    license='MIT',
+    packages=find_packages(),
+    install_requires=[
+      'numpy',
+      'scipy',
+      'matplotlib',
+      'tqdm',
+      'pot',
+      'torch',
+      'torchvision',
+      'torchtext',
+      'attrdict',
+      'opentsne',
+      'seaborn',
+      'scikit-learn',
+      'pandas',
+      'geomloss',
+      'munkres',
+      'adjustText',
+    ],
+    include_package_data=True,
+    zip_safe=False
+)
