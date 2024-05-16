@@ -19,7 +19,7 @@ import torchvision.models as models
 from torch.autograd import Variable
 
 import time
-import imageio
+# import imageio
 import pickle
 from PIL import Image, ImageOps, ImageEnhance
 from copy import deepcopy as dpcp
@@ -30,8 +30,8 @@ from poi_util import poison_dataset,patching_test, VGG
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 
 from vgg import vgg16
-from preact_resnet import PreActResNet18
-from resnet import ResNet18
+#from preact_resnet import load_state_dict
+#from resnet import ResNet18
 
 
 # Load clean data
@@ -163,7 +163,7 @@ def compute_dual(feature_extractor, trainloader, testloader, training_size, shuf
     
     # to return 1
     # OT Dual calculation
-    dual_sol = get_OT_dual_sol(feature_extractor, trainloader, testloader, p=2, resize=32, device='cuda')
+    dual_sol = get_OT_dual_sol(feature_extractor, trainloader, testloader, p=2, resize=32, device=device)
     return dual_sol, trained_with_flag
     
     

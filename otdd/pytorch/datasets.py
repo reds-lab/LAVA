@@ -25,7 +25,7 @@ import torchtext
 from torchtext.data.utils import get_tokenizer
 from copy import deepcopy as dpcp
 
-import h5py
+#import h5py
 
 from .. import DATA_DIR
 
