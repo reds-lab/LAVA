@@ -610,7 +610,7 @@ def load_torchvision_data_shuffle(dataname, valid_size=0.1, splits=None, shuffle
                     stratified=False, random_seed=None, batch_size = 64,
                     resize=None, to3channels=False,
                     maxsize = None, maxsize_test=None, num_workers = 0, transform=None,
-                    data=None, datadir=None, download=True, filt=False, print_stats = False, shuffle_per=0):
+                    data=None, datadir=None, download=True, filt=False, print_stats = False, shuffle_per=0, label_ratio=0.3):
     """ Load torchvision datasets.
 
         We return train and test for plots and post-training experiments
@@ -717,7 +717,33 @@ def load_torchvision_data_shuffle(dataname, valid_size=0.1, splits=None, shuffle
 ######################## ------------------------- IST MNIST MNIST MNIST MNIS -------------------------- ##########################
 ######################## ------------------------- ST MNIST MNIST MNIST MNIST -------------------------- ##########################
 
-
+    def filter_labels(dataset, labels):
+        mask = (dataset.targets == labels[0]) | (dataset.targets == labels[1])
+        dataset.data = dataset.data[mask]
+        dataset.targets = dataset.targets[mask]
+        return dataset
+    def adjust_label_ratio(dataset, labels, ratio):
+        # Separate the data by labels
+        data_label_0 = dataset.data[dataset.targets == labels[0]]
+        data_label_1 = dataset.data[dataset.targets == labels[1]]
+    
+        # Adjust the amount of label 1 relative to label 0
+        num_label_0 = len(data_label_0)
+        num_label_1 = min(len(data_label_1), int(num_label_0 * ratio))
+    
+    # Combine the adjusted datasets
+        adjusted_data = torch.cat((data_label_0, data_label_1[:num_label_1]))
+        adjusted_targets = torch.cat((torch.full((num_label_0,), labels[0], dtype=torch.long), 
+                                  torch.full((num_label_1,), labels[1], dtype=torch.long)))
+    
+    # Ensure the data and targets match the original dataset's data type and shape
+        dataset.data = adjusted_data
+        dataset.targets = adjusted_targets
+        return dataset
+        return dataset
+    train = filter_labels(train, [0, 1])
+    test = filter_labels(test, [0, 1])
+    train = adjust_label_ratio(train, [0, 1], label_ratio)
 ###### VALIDATION IS 0 SO NOT WORRY NOW ######
     ### Data splitting
     fold_idxs    = {}
