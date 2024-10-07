@@ -19,7 +19,7 @@ import torchvision.models as models
 from torch.autograd import Variable
 
 import time
-import imageio
+# import imageio
 import pickle
 from PIL import Image, ImageOps, ImageEnhance
 from copy import deepcopy as dpcp
@@ -30,8 +30,8 @@ from poi_util import poison_dataset,patching_test, VGG
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 
 from vgg import vgg16
-from preact_resnet import PreActResNet18
-from resnet import ResNet18
+#from preact_resnet import load_state_dict
+#from resnet import ResNet18
 
 
 # Load clean data
@@ -163,15 +163,15 @@ def compute_dual(feature_extractor, trainloader, testloader, training_size, shuf
     
     # to return 1
     # OT Dual calculation
-    dual_sol = get_OT_dual_sol(feature_extractor, trainloader, testloader, p=2, resize=32, device='cuda')
+    dual_sol = get_OT_dual_sol(feature_extractor, trainloader, testloader, p=2, resize=32, device=device)
     return dual_sol, trained_with_flag
     
     
 # Get the data values and also visualizes the detection of 'bad' data
-def compute_values_and_visualize(dual_sol, trained_with_flag, training_size, portion):
+def compute_values_and_visualize(dual_sol, trained_with_flag, training_size, portion, poisoned=None):
     calibrated_gradient = values(dual_sol, training_size)
     sorted_gradient_ind = sort_and_keep_indices(calibrated_gradient, training_size)
-    visualize_values_distr_sorted(trained_with_flag, sorted_gradient_ind, training_size, portion, calibrated_gradient)
+    visualize_values_distr_sorted(trained_with_flag, sorted_gradient_ind, training_size, portion, calibrated_gradient, poisoned)
     return calibrated_gradient
     
     
@@ -187,23 +187,31 @@ def sort_and_keep_indices(trainGradient, training_size):
     
 # Visualize based on sorted values (calibrated gradient)
 # Prints 3 graphs, with a random baselines (explained in paper...)
-def visualize_values_distr_sorted(tdid, tsidx, trsize, portion, trainGradient):
+# dual_sol, train_with_flag, training_size,  porsion, calibrated_gradient 
+def visualize_values_distr_sorted(tdid, tsidx, trsize, portion, trainGradient, poisoned= None):
     x1, y1, base = [], [], []
-    poisoned = trsize * portion
+    if poisoned == None:
+        poisoned = trsize * portion
     for vari in range(10,trsize,10):
         if vari < 3000:
-            found = sum(tdid[tsidx[i][0]][2] for i in range(vari))
-            
+            #found = sum(tdid[tsidx[i][0]][2] for i in range(vari))
+            found = 0
+            actual_found = 0
+            for i in range(vari):
+                if tdid[tsidx[i][0]][2]:
+                    found += tdid[tsidx[i][0]][2]
+                    if tsidx[i][0] < 1000:
+                        actual_found+= 1
 #             print('inspected: '+str(vari), 'found: '+str(found),  
 #                   'detection rate: ', str(found / poisoned), 'baseline = '+str(vari*0.2*0.9))
             
-            print(f'inspected: {vari}, found: {found} detection rate: {found / poisoned:.2f} baseline: {vari*0.2*0.9}')
+            print(f'inspected: {vari}, found: {found} actual found: {actual_found} sythetic found; {found - actual_found}, detection rate: {found / poisoned:.2f} baseline: {vari*0.2*0.9}')
             
-        x1.append(vari)
-        y1.append(sum(tdid[tsidx[i][0]][2] for i in range(vari)))
-        base.append(vari*portion*1.0)
-    plt.scatter(x1, y1, s=10)
-    plt.scatter(x1, base, s=10)
+            x1.append(vari)
+            y1.append(found)
+            base.append(vari*poisoned/trsize*1.0)
+    plt.scatter(x1, y1, s=10, color = 'red')
+    plt.scatter(x1, base, s=10, color = 'orange')
     # naming the x axis
     plt.xlabel('Inspected Images')
     # naming the y axis

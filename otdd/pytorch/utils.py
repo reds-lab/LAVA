@@ -288,7 +288,7 @@ def load_full_dataset(data, targets=False, return_both_targets=False,
         keeps = np.isin(Y.cpu(), labels_keep)
         X = X[keeps,:]
         Y = Y[keeps]
-
+    print('load full dataset:', Y.shape)
     if orig_idxs is not None:
         loader.sampler.indices = orig_idxs
     if targets is False:

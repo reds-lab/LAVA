@@ -293,7 +293,7 @@ def pwdist_exact(X1, Y1, X2=None, Y2=None, symmetric=False, loss='sinkhorn',
     c1 = torch.unique(Y1)
     c2 = torch.unique(Y2)
     n1, n2 = len(c1), len(c2)
-
+    print(n1, n2)
     ## We account for the possibility that labels are shifted (c1[0]!=0), see below
 
     if symmetric:
@@ -302,7 +302,7 @@ def pwdist_exact(X1, Y1, X2=None, Y2=None, symmetric=False, loss='sinkhorn',
     else:
         ## If tasks are assymetric, need n1 x n2 comparisons
         pairs = list(itertools.product(range(n1), range(n2)))
-
+    print(pairs)
 
     if cost_function == 'euclidean':
         if p == 1:
@@ -311,8 +311,9 @@ def pwdist_exact(X1, Y1, X2=None, Y2=None, symmetric=False, loss='sinkhorn',
             cost_function = lambda x, y: geomloss.utils.squared_distances(x, y)
         else:
             raise ValueError()
-
+    print('cost function:')
     if loss == 'sinkhorn':
+        #print('cost function:',cost_function.shape)
         distance = geomloss.SamplesLoss(
             loss=loss, p=p,
             cost=cost_function,
@@ -333,7 +334,10 @@ def pwdist_exact(X1, Y1, X2=None, Y2=None, symmetric=False, loss='sinkhorn',
     D = torch.zeros((n1, n2), device = device, dtype=X1.dtype)
     for i, j in pbar:
         try:
+            print(i,j)
+            print("huhu:", X1[Y1==c1[i]].shape, X2[Y2==c2[j]].shape)
             D[i, j] = distance(X1[Y1==c1[i]].to(device), X2[Y2==c2[j]].to(device)).item()
+            print('was:', D[i, j])
         except:
             print("This is awkward. Distance computation failed. Geomloss is hard to debug" \
                   "But here's a few things that might be happening: "\

@@ -141,7 +141,7 @@ class DatasetDistance():
 
     """
 
-    def __init__(self, D1=None, D2=None,
+    def __init__(self, D1=None, D2=None, X1=None, X2=None, Y1=None, Y2=None,
                  ## General Arguments
                  method='precomputed_labeldist',
                  symmetric_tasks=False,
@@ -220,8 +220,8 @@ class DatasetDistance():
         self.Means = [None, None]
         self.Covs = [None, None]
         self.label_distances = None
-        self.X1, self.X2 = None, None
-        self.Y1, self.Y2 = None, None
+        self.X1, self.X2 = X1, X2
+        self.Y1, self.Y2 = Y1, Y2
         self._pwlabel_stats_1 = None
         self._pwlabel_stats_2 = None
 
@@ -240,9 +240,9 @@ class DatasetDistance():
         if self.src_embedding is not None or self.tgt_embedding is not None:
             self.feature_cost = partial(FeatureCost,
                                    src_emb = self.src_embedding,
-                                   src_dim = (3,28,28),
+                                   src_dim = (1,32,32),
                                    tgt_emb = self.tgt_embedding,
-                                   tgt_dim = (3,28,28),
+                                   tgt_dim = (1,32,32),
                                    p = self.p, device=self.device)
 
         self.src_embedding = None
@@ -1445,32 +1445,48 @@ class FeatureCost():
         return out.to(X.device)
 
     def __call__(self, X1, X2):
-        _orig_device = X1.device
-        device = process_device_arg(self.device)
-        #print("Device call: ", device)
-        #print("Self Device call: ", self.device)
-        if self.src_emb is not None:
-            B1, N1, D1 = self._get_batch_shape(X1)
-            try:
-                self.src_emb.to(device)
-                X1 = self.src_emb(X1.view(-1,*self.src_dim).to(self.device)).reshape(B1, N1, -1)
-            except: # Memory error?
-                print('Batchifying feature distance computation')
-                X1 = self._batchify_computation(X1.view(-1,*self.src_dim).to(self.device), 'x').reshape(B1, N1, -1)
-        if self.tgt_emb is not None:
-            B2, N2, D2 = self._get_batch_shape(X2)
-            try:
-                X2 = self.tgt_emb(X2.view(-1,*self.tgt_dim).to(self.device)).reshape(B2, N2, -1)
-            except:
-                print('Batchifying feature distance computation')
-                X2 = self._batchify_computation(X2.view(-1,*self.tgt_dim).to(self.device), 'y').reshape(B2, N2, -1)
-        if self.p == 1:
-            c = geomloss.utils.distances(X1, X2)
-        elif self.p == 2:
-            c = geomloss.utils.squared_distances(X1, X2) / 2
-        else:
-            raise ValueError()
-        return c.to(_orig_device)
+            _orig_device = X1.device
+            device = process_device_arg(self.device)
+            #print("Device call: ", device)
+            #print("Self Device call: ", self.device)
+            if self.src_emb is not None:
+                B1, N1, D1 = self._get_batch_shape(X1)
+                print(B1, N1, D1)
+                try:
+                    self.src_emb.to(device)
+                    #X1 = self.src_emb(X1.view(-1,*self.src_dim).to(self.device)).reshape(B1, N1, -1)
+                    X_test_1 = X1.view(-1, *self.src_dim)
+                    X_test_rgb_1 = X_test_1.repeat(1, 3, 1, 1)
+                    X_test_rgb_1 = X_test_rgb_1.to(device)
+                    X_test_emb_1 = self.src_emb(X_test_rgb_1)
+                    X1 = X_test_emb_1.reshape(B1, N1, -1)
+                    print(X1.shape)
+                except: # Memory error?
+                    print('Batchifying feature distance computation')
+                    X1 = self._batchify_computation(X1.view(-1,*self.src_dim).to(self.device), 'x').reshape(B1, N1, -1)
+            if self.tgt_emb is not None:
+                B2, N2, D2 = self._get_batch_shape(X2)
+                print(B2, N2, D2)
+                try:
+                    self.tgt_emb.to(device)
+                    X_test_2 = X2.view(-1, *self.tgt_dim)
+                    X_test_rgb_2 = X_test_2.repeat(1, 3, 1, 1)
+                    X_test_rgb_2 = X_test_rgb_2.to(device)
+                    X_test_emb_2 = self.tgt_emb(X_test_rgb_2)
+                    X2 = X_test_emb_2.reshape(B2, N2, -1)
+                    #X2 = self.tgt_emb(X2.view(-1,*self.tgt_dim).to(self.device)).reshape(B2, N2, -1)
+                    print(X2.shape)
+                except:
+                    print('Batchifying feature distance computation')
+                    X2 = self._batchify_computation(X2.view(-1,*self.tgt_dim).to(self.device), 'y').reshape(B2, N2, -1)
+            if self.p == 1:
+                c = geomloss.utils.distances(X1, X2)
+            elif self.p == 2:
+                c = geomloss.utils.squared_distances(X1, X2) / 2
+            else:
+                raise ValueError()
+            print(c.shape)
+            return c.to(_orig_device)
 
 
 def batch_jdot_cost(Z1, Z2, p=2, alpha=1.0, feature_cost=None):
@@ -1524,9 +1540,11 @@ def batch_augmented_cost(Z1, Z2, W=None, Means=None, Covs=None, feature_cost=Non
         ValueError: If neither W nor (Means, Covs) are provided.
 
     """
-#     print("Z1 shape in batch: ", Z1.shape)
+    print("Z1 shape in batch: ", Z1.shape)
+    print("Z2 shape in batch: ", Z2.shape)
     B, N, D1 = Z1.shape
     B, M, D2 = Z2.shape
+
     assert (D1 == D2) or (feature_cost is not None)
 
     Y1 = Z1[:, :, -1].long()
@@ -1541,7 +1559,7 @@ def batch_augmented_cost(Z1, Z2, W=None, Means=None, Covs=None, feature_cost=Non
         C1 = cost_routines[p](Z1[:, :, :-1], Z2[:, :, :-1])  # Get from GeomLoss
     else:
         C1 = feature_cost(Z1[:, :, :-1], Z2[:, :, :-1]) # Feature Embedding
-
+    print(C1.shape)
         
     # Label Distances
     if λ_y is None or λ_y == 0:
@@ -1553,7 +1571,10 @@ def batch_augmented_cost(Z1, Z2, W=None, Means=None, Covs=None, feature_cost=Non
         ## Label-to-label distances have been precomputed and passed
         ## Stores flattened index corresponoding to label pairs
         M = W.shape[1] * Y1[:, :, None] + Y2[:, None, :]
+        print('Gia tri M:', M)
+        print(M.shape)
         C2 = W.flatten()[M.flatten(start_dim=1)].reshape(-1,Y1.shape[1], Y2.shape[1])
+        print(C2.shape)
     elif Means is not None and Covs is not None:
         ## We need to compate label distances too
         dmeans = cost_routines[p](Means[0][Y1.squeeze()], Means[1][Y2.squeeze()])
@@ -1567,7 +1588,8 @@ def batch_augmented_cost(Z1, Z2, W=None, Means=None, Covs=None, feature_cost=Non
     ## NOTE: geomloss's cost_routines as defined above already divide by p. We do
     ## so here too for consistency. But as a consequence, need to divide C2 by p too.
     D = λ_x * C1  +  λ_y * (C2/p) 
-
+    print('gia tri D:', D)
+    print(D.shape)
     global first_dist
 
     global last_dist
